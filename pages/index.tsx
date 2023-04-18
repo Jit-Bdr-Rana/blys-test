@@ -1,124 +1,113 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+import { useRouter } from "next/router";
+import { useRef, KeyboardEvent, ClipboardEvent, FormEvent } from "react";
 
-const inter = Inter({ subsets: ['latin'] })
-
-export default function Home() {
+export default function home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+    <Home />
+  )
+}
+
+
+const Home = () => {
+  const router = useRouter();
+  const myRefs = useRef<HTMLInputElement[]>([]);
+  const handleKeyUp = (e: KeyboardEvent<HTMLInputElement>, i: number) => {
+    console.log(e.key)
+    if (e?.key == 'Backspace') {
+      !myRefs?.current[i].value && myRefs.current[i == 0 ? 0 : i - 1]?.focus()
+    } else {
+      myRefs?.current[i].value && myRefs.current[i == 6 ? 6 : i + 1]?.focus()
+    }
+    if (myRefs.current[i].value) {
+      myRefs.current[i].style.border = ''
+    }
+  };
+
+  //hanlde when user enter ctrl+v
+  const paste = (event: ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault()
+    const pasted = event.clipboardData.getData("text/plain")
+
+    //check if the  value user pasted is numeric and 6 digit or not
+    if (isNaN(parseInt(pasted))) {
+      alert('invalid token !! token must be 6digit number')
+      return
+    }
+    const token: string[] = pasted.split('')
+    myRefs.current.map((c, i) => {
+      token[i] ? c.value = token[i] : '';
+    })
+  }
+  //trigger when user click submit button
+  const submit = (e: FormEvent) => {
+    e.preventDefault() //prevent from page refesh
+    let token: string[] = [];
+    for (let current of myRefs.current) {
+      //validation 
+      if (!current.value || current.value == undefined) {
+        current.style.border = "2px solid red"
+        return
+      } else {
+        current.style.border = ''
+      }
+      token.push(current.value)
+    }
+
+    //api request to backend in our case is next js powered express js backend under api/verify folder
+    fetch('/api/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: token.join(''),
+    })
+      .then(async (res) => res.ok ? res.json() : Promise.reject(res.json()))
+      .then((res: any) => { alert(res?.message); router.push('/success') })// for success 
+      //for error
+      .catch(async (c) => {
+        const { error } = await c;
+        alert(error)
+      }
+      )
+  }
+  return (
+    <div className="bg-white min-h-screen flex justify-center items-center">
+      <div className="text-center w-[20%]">
+        <h1 className="font-bold text-lg">Verification Code:</h1>
+        <form onSubmit={submit}>
+          <div className="grid grid-cols-6 gap-1 my-3">
+            {
+              Array(6).fill(0).map((_, i) => {
+                return (
+                  <input
+                    title={`${i}`}
+                    name={`${i}`}
+                    //event when user press keyboard button
+                    onKeyUp={(e) =>
+                      handleKeyUp(e, i)
+                    }
+                    // event when user paste 
+                    onPaste={paste}
+                    //event when input change
+                    onChange={(e) => {
+                      //digit validation replace with empty value '' when aphabet and special character enter
+                      e.target.value = e.target.value.replace(/^[a-zA-Z\s\W]+$/, '').substring(0, 1);
+                    }
+                    }
+                    //assigning ref to the rect userref similar to document.getElementbyId()
+                    ref={(el) => {
+                      myRefs.current[i] = el as HTMLInputElement
+                    }}
+                    min={0} max={9} maxLength={1} key={i} type="text" className="border-2 border-gray-800 rounded-md px-3.5 p-1.5" />
+                )
+              })
+            }
+          </div>
+          <button type="submit" className="bg-purple-950 w-[80%] text-white p-2 text-lg rounded-md ">
+            Submit
+          </button>
+        </form>
       </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   )
 }
