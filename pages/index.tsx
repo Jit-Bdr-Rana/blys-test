@@ -42,17 +42,18 @@ const Home = () => {
   const submit = (e: FormEvent) => {
     e.preventDefault() //prevent from page refesh
     let token: string[] = [];
+    let error:boolean=false;
     for (let current of myRefs.current) {
       //validation 
       if (!current.value || current.value == undefined) {
         current.style.border = "2px solid red"
-        return
+        error=true;
       } else {
         current.style.border = ''
       }
       token.push(current.value)
     }
-
+  if(error)return;
     //api request to backend in our case is next js powered express js backend under api/verify folder
     fetch('/api/verify', {
       method: 'POST',
@@ -66,6 +67,7 @@ const Home = () => {
       //for error
       .catch(async (c) => {
         const { error } = await c;
+        myRefs.current[5].style.border = "2px solid red"
         alert(error)
       }
       )
